@@ -44,7 +44,7 @@ export default function AdminDashboard() {
           <h1 className="text-xl font-bold text-slate-800">Dashboard Semakan & Kelulusan (Admin/Approver)</h1>
           <p className="text-sm text-slate-500">Log masuk sebagai: {user?.fullName || "Pegawai Pelulus"}</p>
         </div>
-        <UserButton afterSignOutUrl="/" />
+        <UserButton />
       </div>
 
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
