@@ -7,37 +7,34 @@ const googleScriptUrl = process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL;
 export async function submitApplication(formData: FormData) {
   try {
     if (!googleScriptUrl) {
-      return { success: false, error: "URL Google Apps Script tidak dijumpai dalam .env.local" };
+      throw new Error("NEXT_PUBLIC_GOOGLE_SCRIPT_URL tidak ditetapkan dalam fail .env atau Vercel.");
     }
 
-    const type = formData.get("type") as "TNT" | "OT" | "BOTH";
-    const bulan = (formData.get("bulan") as string) || "";
-    const tahun = (formData.get("tahun") as string) || "2026";
-    const supporterEmail = (formData.get("supporterEmail") as string) || "";
-    const approverEmail = (formData.get("approverEmail") as string) || "";
+    const { userId } = await auth();
+    let activeUserId = userId;
 
-    const otItems = JSON.parse((formData.get("otItems") as string) || "[]");
-    const tntItems = JSON.parse((formData.get("tntItems") as string) || "[]");
-
-    // Pengesahan Clerk
-    const authObj = await auth();
-    let activeUserId = authObj?.userId;
     if (!activeUserId) {
       const user = await currentUser();
-      activeUserId = user?.id;
+      activeUserId = user?.id || null;
     }
 
     const applicationId = `APP-${Date.now()}`;
+    const type = formData.get("type") as string;
+    const monthApplied = `${formData.get("bulan")}/${formData.get("tahun")}`;
+    const otItems = JSON.parse((formData.get("otItems") as string) || "[]");
+    const tntItems = JSON.parse((formData.get("tntItems") as string) || "[]");
+    const supporterEmail = formData.get("supporterEmail") as string;
+    const approverEmail = formData.get("approverEmail") as string;
 
-    // Convert attachments
+    // Convert Lampiran (Fail) ke Base64 Array
+    const attachmentsFiles: { fileName: string; mimeType: string; base64Data: string }[] = [];
     const files = formData.getAll("attachments") as File[];
-    const attachmentsFiles = [];
 
-    if (files && files.length > 0) {
-      for (const file of files) {
-        if (!file || file.size === 0) continue;
+    for (const file of files) {
+      if (file && file.size > 0) {
         const arrayBuffer = await file.arrayBuffer();
-        const base64Data = Buffer.from(arrayBuffer).toString("base64");
+        const buffer = Buffer.from(arrayBuffer);
+        const base64Data = buffer.toString("base64");
 
         attachmentsFiles.push({
           fileName: file.name,
@@ -47,15 +44,17 @@ export async function submitApplication(formData: FormData) {
       }
     }
 
+    // Payload hantar ke Google Apps Script
     const payload = {
+      action: "submitApplication",
       applicationId,
-      userId: activeUserId || "GUEST",
+      userId: activeUserId,
       type,
-      monthApplied: `${bulan}/${tahun}`,
-      supporterEmail,
-      approverEmail,
+      monthApplied,
       otItems,
       tntItems,
+      supporterEmail,
+      approverEmail,
       attachmentsFiles,
     };
 
@@ -65,21 +64,14 @@ export async function submitApplication(formData: FormData) {
       body: JSON.stringify(payload),
     });
 
-    const responseText = await res.text();
-    let result;
-    try {
-      result = JSON.parse(responseText);
-    } catch {
-      return { success: false, error: "Maklum balas Google Script tidak sah: " + responseText };
-    }
+    const result = await res.json();
 
     if (result.result === "error") {
-      return { success: false, error: result.message };
+      throw new Error(result.message);
     }
 
-    return { success: true };
+    return { success: true, applicationId };
   } catch (err: any) {
-    console.error("Submit Error:", err);
-    return { success: false, error: err.message || "Berlaku masalah semasa menghantar." };
+    return { success: false, error: err.message || err.toString() };
   }
 }
