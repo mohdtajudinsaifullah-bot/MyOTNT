@@ -253,7 +253,7 @@ export default function DashboardPage() {
           )}
 
           <div className="border-l pl-3 ml-1">
-            <UserButton afterSignOutUrl="/" />
+            <UserButton />
           </div>
         </div>
       </div>
