@@ -9,7 +9,7 @@ import {
   saveUserAction, 
   deleteUserAction 
 } from "../actions/dashboard";
-import ApplicationForm from "../components/ApplicationForm";
+import ApplicationForm from "../application-form";
 
 export default function DashboardPage() {
   const { user, isLoaded } = useUser();
