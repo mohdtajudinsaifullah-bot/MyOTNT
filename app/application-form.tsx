@@ -24,6 +24,7 @@ type TNTItem = {
 
 export default function ApplicationForm() {
   const [type, setType] = useState<"TNT" | "OT" | "BOTH">("BOTH");
+  const [vehicleType, setVehicleType] = useState<"Kenderaan Sendiri" | "Kenderaan Jabatan">("Kenderaan Sendiri");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [bulan, setBulan] = useState("");
@@ -90,6 +91,7 @@ export default function ApplicationForm() {
       formData.append("type", type);
       formData.append("bulan", bulan);
       formData.append("tahun", tahun);
+      formData.append("vehicleType", vehicleType);
       formData.append("otItems", JSON.stringify(otItems));
       formData.append("tntItems", JSON.stringify(tntItems));
       formData.append("supporterEmail", supporterEmail);
@@ -138,7 +140,7 @@ export default function ApplicationForm() {
         </div>
       </div>
 
-      {/* Dynamic Selector */}
+      {/* Dynamic Selector Permohonan */}
       <div className="mb-6">
         <label className="block text-sm font-semibold text-slate-700 mb-2">Pilih Jenis Permohonan:</label>
         <div className="flex gap-2">
@@ -155,6 +157,42 @@ export default function ApplicationForm() {
           ))}
         </div>
       </div>
+
+      {/* Pilihan Kenderaan Yang Digunakan */}
+      {(type === "TNT" || type === "BOTH") && (
+        <div className="mb-6 bg-slate-50 border border-slate-200 p-4 rounded-xl">
+          <label className="block text-sm font-bold text-slate-800 mb-2">🚗 Kenderaan Yang Digunakan:</label>
+          <div className="flex flex-wrap gap-4 text-sm font-medium">
+            <label className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition ${
+              vehicleType === "Kenderaan Sendiri" ? "bg-blue-50 border-blue-500 text-blue-700 font-semibold" : "bg-white text-slate-600"
+            }`}>
+              <input
+                type="radio"
+                name="vehicleType"
+                value="Kenderaan Sendiri"
+                checked={vehicleType === "Kenderaan Sendiri"}
+                onChange={() => setVehicleType("Kenderaan Sendiri")}
+                className="accent-blue-600"
+              />
+              1 - Kenderaan Sendiri
+            </label>
+
+            <label className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition ${
+              vehicleType === "Kenderaan Jabatan" ? "bg-blue-50 border-blue-500 text-blue-700 font-semibold" : "bg-white text-slate-600"
+            }`}>
+              <input
+                type="radio"
+                name="vehicleType"
+                value="Kenderaan Jabatan"
+                checked={vehicleType === "Kenderaan Jabatan"}
+                onChange={() => setVehicleType("Kenderaan Jabatan")}
+                className="accent-blue-600"
+              />
+              2 - Kenderaan Jabatan
+            </label>
+          </div>
+        </div>
+      )}
 
       {/* Section OT (MENEGAK / STACK) */}
       {(type === "OT" || type === "BOTH") && (

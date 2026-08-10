@@ -21,12 +21,12 @@ export async function submitApplication(formData: FormData) {
     const applicationId = `APP-${Date.now()}`;
     const type = formData.get("type") as string;
     const monthApplied = `${formData.get("bulan")}/${formData.get("tahun")}`;
+    const vehicleType = (formData.get("vehicleType") as string) || "Kenderaan Sendiri";
     const otItems = JSON.parse((formData.get("otItems") as string) || "[]");
     const tntItems = JSON.parse((formData.get("tntItems") as string) || "[]");
     const supporterEmail = formData.get("supporterEmail") as string;
     const approverEmail = formData.get("approverEmail") as string;
 
-    // Convert Lampiran (Fail) ke Base64 Array
     const attachmentsFiles: { fileName: string; mimeType: string; base64Data: string }[] = [];
     const files = formData.getAll("attachments") as File[];
 
@@ -44,13 +44,13 @@ export async function submitApplication(formData: FormData) {
       }
     }
 
-    // Payload hantar ke Google Apps Script
     const payload = {
       action: "submitApplication",
       applicationId,
       userId: activeUserId,
       type,
       monthApplied,
+      vehicleType,
       otItems,
       tntItems,
       supporterEmail,

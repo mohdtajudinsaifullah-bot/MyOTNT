@@ -523,6 +523,7 @@ export default function DashboardPage() {
                 <p>PEGAWAI: <span className="font-normal">{selectedApplicantProfile?.nama || selectedAppForPrint.applicantName || user?.fullName}</span></p>
                 <p>JAWATAN: <span className="font-normal">{selectedApplicantProfile?.jawatan || selectedAppForPrint.applicantJawatan || "PENOLONG PENGARAH"}</span></p>
                 <p>TEMPAT BERTUGAS: <span className="font-normal">{selectedApplicantProfile?.tempatBertugas || selectedAppForPrint.applicantTempat || "JABATAN KEHAKIMAN SYARIAH MALAYSIA"}</span></p>
+                <p>KENDERAAN DIGUNAKAN: <span className="font-normal underline">{selectedAppForPrint.vehicleType || "Kenderaan Sendiri"}</span></p>
               </div>
 
               <div className="border-b-2 border-black p-3 font-semibold">
