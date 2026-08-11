@@ -11,12 +11,11 @@ export async function submitApplication(formData: FormData) {
     }
 
     const { userId } = await auth();
-    let activeUserId = userId;
+    const user = await currentUser();
 
-    if (!activeUserId) {
-      const user = await currentUser();
-      activeUserId = user?.id || null;
-    }
+    const activeUserId = userId || user?.id || null;
+    const applicantEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase() || "";
+    const applicantName = user?.fullName || user?.firstName || "";
 
     const applicationId = `APP-${Date.now()}`;
     const type = formData.get("type") as string;
@@ -48,6 +47,8 @@ export async function submitApplication(formData: FormData) {
       action: "submitApplication",
       applicationId,
       userId: activeUserId,
+      applicantEmail,
+      applicantName,
       type,
       monthApplied,
       vehicleType,

@@ -20,6 +20,11 @@ export default function DashboardPage() {
   const [mainTab, setMainTab] = useState<"status" | "new_app" | "profile" | "users">("status");
   const [selectedAppForPrint, setSelectedAppForPrint] = useState<any>(null);
 
+  // STATE SEARCH & FILTER
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState("ALL");
+  const [filterState, setFilterState] = useState("ALL");
+
   // State Profil Pemohon
   const [profNama, setProfNama] = useState("");
   const [profJawatan, setProfJawatan] = useState("");
@@ -27,9 +32,9 @@ export default function DashboardPage() {
   const [profNoTel, setProfNoTel] = useState("");
   const [isSavingProf, setIsSavingProf] = useState(false);
 
-  // State Modal Actions (Sokong / Lulus)
+  // State Modal Actions (Sokong / Lulus / Tolak)
   const [actionModalApp, setActionModalApp] = useState<any>(null);
-  const [actionType, setActionType] = useState<"DISOKONG" | "DILULUSKAN" | null>(null);
+  const [actionType, setActionType] = useState<"DISOKONG" | "DILULUSKAN" | "DITOLAK" | null>(null);
   const [officerName, setOfficerName] = useState("");
   const [officerJawatan, setOfficerJawatan] = useState("");
   const [signatureBase64, setSignatureBase64] = useState<string | null>(null);
@@ -93,7 +98,7 @@ export default function DashboardPage() {
     }
   };
 
-  const openActionModal = (app: any, newStatus: "DISOKONG" | "DILULUSKAN") => {
+  const openActionModal = (app: any, newStatus: "DISOKONG" | "DILULUSKAN" | "DITOLAK") => {
     setActionModalApp(app);
     setActionType(newStatus);
     setOfficerName(user?.fullName || "");
@@ -102,7 +107,7 @@ export default function DashboardPage() {
   };
 
   const handleConfirmAction = async () => {
-    if (!officerName || !signatureBase64) {
+    if (actionType !== "DITOLAK" && (!officerName || !signatureBase64)) {
       alert("Sila isi Nama dan muat naik Tandatangan Digital!");
       return;
     }
@@ -114,12 +119,12 @@ export default function DashboardPage() {
       supporterName: actionType === "DISOKONG" ? officerName : undefined,
       supporterJawatan: actionType === "DISOKONG" ? officerJawatan : undefined,
       approverName: actionType === "DILULUSKAN" ? officerName : undefined,
-      signatureBase64: signatureBase64
+      signatureBase64: signatureBase64 || ""
     });
     setIsSubmittingAction(false);
 
     if (res.success) {
-      alert(`Permohonan berjaya ${actionType}!`);
+      alert(`Permohonan berjaya dikemaskini ke status ${actionType}!`);
       setActionModalApp(null);
       loadData();
     } else {
@@ -181,24 +186,44 @@ export default function DashboardPage() {
     return <div className="p-8 text-center text-gray-600 font-medium">Sedang memuatkan Dashboard MyOTNT...</div>;
   }
 
-  const filteredApps = applications.filter(app => {
+  // 1. Tapis permohonan mengikut peranan (Role Filter)
+  const roleFilteredApps = applications.filter(app => {
     if (userRole === "MASTER_ADMIN") return true;
     if (userRole === "PENYOKONG" || app.supporterEmail?.toLowerCase() === currentUserEmail) {
-      return app.status === "PENDING" || app.status === "DISOKONG";
+      return true; // Penyokong boleh lihat semua status semakan
     }
     if (userRole === "PELULUS" || app.approverEmail?.toLowerCase() === currentUserEmail) {
-      return app.status === "DISOKONG" || app.status === "DILULUSKAN";
+      return true; // Pelulus boleh lihat semua status semakan
     }
-    return app.userId === user?.id || app.supporterEmail?.toLowerCase() === currentUserEmail;
+    return app.userId === user?.id || app.supporterEmail?.toLowerCase() === currentUserEmail || app.applicantEmail?.toLowerCase() === currentUserEmail;
+  });
+
+  // 2. Tapis mengikut Carian Nama, Status, dan Negeri / Tempat Bertugas
+  const filteredApps = roleFilteredApps.filter(app => {
+    const applicantProf = profiles.find(p => p.email.toLowerCase() === (app.applicantEmail?.toLowerCase() || "")) || {};
+    const appName = (applicantProf.nama || app.applicantName || "").toLowerCase();
+    const appTempat = (applicantProf.tempatBertugas || app.applicantTempat || "").toLowerCase();
+    const appId = (app.applicationId || "").toLowerCase();
+
+    // Matching Carian Nama / ID
+    const matchSearch = searchQuery === "" || appName.includes(searchQuery.toLowerCase()) || appId.includes(searchQuery.toLowerCase());
+    
+    // Matching Status
+    const matchStatus = filterStatus === "ALL" || app.status === filterStatus;
+
+    // Matching Negeri / Tempat
+    const matchState = filterState === "ALL" || appTempat.includes(filterState.toLowerCase());
+
+    return matchSearch && matchStatus && matchState;
   });
 
   const parseItems = (jsonStr: string) => {
     try { return JSON.parse(jsonStr || "[]"); } catch { return []; }
   };
 
-  const selectedApplicantProfile = selectedAppForPrint 
-    ? profiles.find(p => p.email.toLowerCase() === (selectedAppForPrint.supporterEmail?.toLowerCase() || currentUserEmail)) ||
-      profiles.find(p => p.email.toLowerCase() === currentUserEmail)
+  const appApplicantEmail = selectedAppForPrint?.applicantEmail?.toLowerCase() || "";
+  const selectedApplicantProfile = appApplicantEmail 
+    ? profiles.find(p => p.email.toLowerCase() === appApplicantEmail)
     : null;
 
   return (
@@ -261,16 +286,83 @@ export default function DashboardPage() {
       {/* TAB 1: STATUS PERMOHONAN */}
       {mainTab === "status" && (
         <div className="print:hidden bg-white rounded-xl shadow-sm border overflow-hidden">
-          <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
-            <h2 className="font-semibold text-gray-700">Rekod & Status Permohonan Saya</h2>
-            <button onClick={loadData} className="text-xs bg-gray-200 hover:bg-gray-300 px-3 py-1.5 rounded text-gray-700">Refresh Data</button>
+          
+          {/* HEADER JADUAL & BOTON REFRESH */}
+          <div className="p-4 border-b bg-gray-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+            <div>
+              <h2 className="font-semibold text-gray-800">Rekod & Status Permohonan Saya / Semakan</h2>
+              <p className="text-xs text-gray-500">Jumlah rekod dijumpai: <span className="font-bold text-blue-600">{filteredApps.length}</span></p>
+            </div>
+            <button onClick={loadData} className="text-xs bg-gray-200 hover:bg-gray-300 px-3 py-1.5 rounded text-gray-700 font-medium">
+              🔄 Refresh Data
+            </button>
           </div>
 
+          {/* 🔍 RUANGAN FILTER CARIAN PINTAR (NAMA, STATUS, NEGERI) */}
+          <div className="p-4 bg-slate-50 border-b grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* 1. CARIAN NAMA / ID */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">🔍 Cari Nama / ID Permohonan:</label>
+              <input
+                type="text"
+                placeholder="Taip nama pemohon atau ID..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full border rounded-lg px-3 py-2 text-xs bg-white outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* 2. FILTER STATUS */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">📌 Tapis Mengikut Status:</label>
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="w-full border rounded-lg px-3 py-2 text-xs bg-white outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+              >
+                <option value="ALL">-- Semua Status --</option>
+                <option value="PENDING">🟡 PENDING (Menunggu Sokongan)</option>
+                <option value="DISOKONG">🔵 DISOKONG (Menunggu Kelulusan)</option>
+                <option value="DILULUSKAN">🟢 DILULUSKAN</option>
+                <option value="DITOLAK">🔴 DITOLAK</option>
+              </select>
+            </div>
+
+            {/* 3. FILTER NEGERI / TEMPAT BERTUGAS */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">🏛️ Tapis Mengikut Negeri / Lokasi:</label>
+              <select
+                value={filterState}
+                onChange={(e) => setFilterState(e.target.value)}
+                className="w-full border rounded-lg px-3 py-2 text-xs bg-white outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+              >
+                <option value="ALL">-- Semua Negeri / Lokasi --</option>
+                <option value="JKSM">JKSM Putrajaya</option>
+                <option value="Kuala Lumpur">W.P. Kuala Lumpur</option>
+                <option value="Selangor">Selangor</option>
+                <option value="Johor">Johor</option>
+                <option value="Kedah">Kedah</option>
+                <option value="Kelantan">Kelantan</option>
+                <option value="Melaka">Melaka</option>
+                <option value="Negeri Sembilan">Negeri Sembilan</option>
+                <option value="Pahang">Pahang</option>
+                <option value="Penang">Pulau Pinang</option>
+                <option value="Perak">Perak</option>
+                <option value="Perlis">Perlis</option>
+                <option value="Sabah">Sabah</option>
+                <option value="Sarawak">Sarawak</option>
+                <option value="Terengganu">Terengganu</option>
+                <option value="Labuan">W.P. Labuan</option>
+              </select>
+            </div>
+          </div>
+
+          {/* JADUAL REKOD */}
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm text-gray-600">
               <thead className="bg-gray-100 text-gray-700 uppercase text-xs">
                 <tr>
-                  <th className="px-4 py-3">ID Permohonan</th>
+                  <th className="px-4 py-3">ID & Pemohon</th>
                   <th className="px-4 py-3">Jenis</th>
                   <th className="px-4 py-3">Bulan/Tahun</th>
                   <th className="px-4 py-3">Tarikh Mohon</th>
@@ -281,27 +373,34 @@ export default function DashboardPage() {
               </thead>
               <tbody className="divide-y">
                 {filteredApps.length === 0 ? (
-                  <tr><td colSpan={7} className="text-center py-8 text-gray-400">Tiada rekod permohonan dijumpai.</td></tr>
+                  <tr><td colSpan={7} className="text-center py-8 text-gray-400">Tiada rekod permohonan dijumpai berdasarkan carian anda.</td></tr>
                 ) : (
                   filteredApps.map((app) => {
+                    const applicantProf = profiles.find(p => p.email.toLowerCase() === (app.applicantEmail?.toLowerCase() || "")) || {};
+                    const displayName = applicantProf.nama || app.applicantName || "Pemohon";
+                    const displayTempat = applicantProf.tempatBertugas || app.applicantTempat || "";
                     const showNewBadge = (app.status === "DILULUSKAN" || app.status === "DITOLAK") && isRecentUpdate(app.tarikhMohon);
 
                     return (
                       <tr key={app.applicationId} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 font-medium text-gray-900 flex items-center gap-2">
-                          {app.applicationId}
-                          {showNewBadge && (
-                            <span className="relative flex h-3 w-3">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                            </span>
-                          )}
+                        <td className="px-4 py-3 font-medium text-gray-900">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold">{app.applicationId}</span>
+                            {showNewBadge && (
+                              <span className="relative flex h-2.5 w-2.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-500 font-semibold mt-0.5">{displayName}</div>
+                          {displayTempat && <div className="text-[10px] text-gray-400 uppercase">{displayTempat}</div>}
                         </td>
-                        <td className="px-4 py-3">{app.type}</td>
+                        <td className="px-4 py-3 font-medium">{app.type}</td>
                         <td className="px-4 py-3">{app.monthApplied}</td>
                         <td className="px-4 py-3 text-xs">{formatDateOnly(app.tarikhMohon)}</td>
                         <td className="px-4 py-3">
-                          <span className={`px-2 py-1 text-xs rounded font-semibold flex items-center gap-1 w-fit ${
+                          <span className={`px-2.5 py-1 text-xs rounded font-bold flex items-center gap-1 w-fit ${
                             app.status === "PENDING" ? "bg-yellow-100 text-yellow-800" :
                             app.status === "DISOKONG" ? "bg-blue-100 text-blue-800" :
                             app.status === "DILULUSKAN" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
@@ -312,25 +411,38 @@ export default function DashboardPage() {
                         </td>
                         <td className="px-4 py-3">
                           {app.fileUrls ? (
-                            <a href={app.fileUrls} target="_blank" rel="noreferrer" className="text-blue-600 underline text-xs">Lihat Fail</a>
+                            <a href={app.fileUrls} target="_blank" rel="noreferrer" className="text-blue-600 underline text-xs font-semibold">Lihat Fail</a>
                           ) : "-"}
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <div className="flex justify-center gap-1">
+                          <div className="flex justify-center gap-1.5 flex-wrap">
+                            {/* TINDAKAN PENYOKONG */}
                             {(userRole === "PENYOKONG" || userRole === "MASTER_ADMIN") && app.status === "PENDING" && (
-                              <button onClick={() => openActionModal(app, "DISOKONG")} className="bg-blue-600 text-white text-xs px-2.5 py-1 rounded hover:bg-blue-700">
-                                Sokong
-                              </button>
+                              <>
+                                <button onClick={() => openActionModal(app, "DISOKONG")} className="bg-blue-600 text-white text-xs px-3 py-1 rounded font-bold hover:bg-blue-700 shadow-sm">
+                                  Sokong
+                                </button>
+                                <button onClick={() => openActionModal(app, "DITOLAK")} className="bg-red-600 text-white text-xs px-2.5 py-1 rounded font-bold hover:bg-red-700 shadow-sm">
+                                  Tolak
+                                </button>
+                              </>
                             )}
 
+                            {/* TINDAKAN PELULUS */}
                             {(userRole === "PELULUS" || userRole === "MASTER_ADMIN") && app.status === "DISOKONG" && (
-                              <button onClick={() => openActionModal(app, "DILULUSKAN")} className="bg-green-600 text-white text-xs px-2.5 py-1 rounded hover:bg-green-700">
-                                Luluskan
-                              </button>
+                              <>
+                                <button onClick={() => openActionModal(app, "DILULUSKAN")} className="bg-green-600 text-white text-xs px-3 py-1 rounded font-bold hover:bg-green-700 shadow-sm">
+                                  Luluskan
+                                </button>
+                                <button onClick={() => openActionModal(app, "DITOLAK")} className="bg-red-600 text-white text-xs px-2.5 py-1 rounded font-bold hover:bg-red-700 shadow-sm">
+                                  Tolak
+                                </button>
+                              </>
                             )}
 
+                            {/* DOKUMEN RASMI */}
                             {app.status === "DILULUSKAN" && (
-                              <button onClick={() => setSelectedAppForPrint(app)} className="bg-gray-800 text-white text-xs px-3 py-1 rounded hover:bg-black flex items-center gap-1">
+                              <button onClick={() => setSelectedAppForPrint(app)} className="bg-gray-800 text-white text-xs px-3 py-1.5 rounded font-bold hover:bg-black flex items-center gap-1 shadow-sm">
                                 🖨️ Surat / Slip PDF
                               </button>
                             )}
@@ -449,7 +561,7 @@ export default function DashboardPage() {
         <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center p-4">
           <div className="bg-white max-w-md w-full rounded-xl p-6 shadow-xl border">
             <h3 className="font-bold text-lg text-gray-800 mb-4 border-b pb-2">
-              Pengesahan {actionType === "DISOKONG" ? "Sokongan" : "Kelulusan"}
+              Pengesahan {actionType === "DISOKONG" ? "Sokongan" : actionType === "DILULUSKAN" ? "Kelulusan" : "Penolakan"}
             </h3>
 
             <div className="space-y-4 text-xs">
@@ -463,20 +575,26 @@ export default function DashboardPage() {
                 <input type="text" value={officerJawatan} onChange={(e) => setOfficerJawatan(e.target.value)} className="w-full border rounded p-2 text-sm outline-none" required />
               </div>
 
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1">Muat Naik Tandatangan Digital (PNG/JPG):</label>
-                <input type="file" accept="image/*" onChange={handleSignatureFile} className="w-full text-xs" required />
-              </div>
+              {actionType !== "DITOLAK" && (
+                <>
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Muat Naik Tandatangan Digital (PNG/JPG):</label>
+                    <input type="file" accept="image/*" onChange={handleSignatureFile} className="w-full text-xs" required />
+                  </div>
 
-              {signatureBase64 && (
-                <div className="border p-2 rounded bg-gray-50 text-center">
-                  <p className="text-[10px] text-gray-500 mb-1">Pratonton Tandatangan:</p>
-                  <img src={signatureBase64} alt="Preview Sign" className="h-12 mx-auto object-contain" />
-                </div>
+                  {signatureBase64 && (
+                    <div className="border p-2 rounded bg-gray-50 text-center">
+                      <p className="text-[10px] text-gray-500 mb-1">Pratonton Tandatangan:</p>
+                      <img src={signatureBase64} alt="Preview Sign" className="h-12 mx-auto object-contain" />
+                    </div>
+                  )}
+                </>
               )}
 
               <div className="flex gap-2 pt-4">
-                <button onClick={handleConfirmAction} disabled={isSubmittingAction} className="flex-1 bg-blue-600 text-white font-bold py-2 rounded text-sm hover:bg-blue-700 disabled:bg-gray-400">
+                <button onClick={handleConfirmAction} disabled={isSubmittingAction} className={`flex-1 text-white font-bold py-2 rounded text-sm disabled:bg-gray-400 ${
+                  actionType === "DITOLAK" ? "bg-red-600 hover:bg-red-700" : "bg-blue-600 hover:bg-blue-700"
+                }`}>
                   {isSubmittingAction ? "Menyimpan..." : "Sahkan & Hantar"}
                 </button>
                 <button onClick={() => setActionModalApp(null)} className="bg-gray-200 text-gray-700 font-semibold px-4 py-2 rounded text-sm hover:bg-gray-300">
@@ -518,10 +636,10 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* MAKLUMAT PEGAWAI */}
+              {/* MAKLUMAT PEGAWAI PEMOHON ASAL */}
               <div className="border-b-2 border-black p-3 space-y-1 font-semibold uppercase">
-                <p>PEGAWAI: <span className="font-normal">{selectedApplicantProfile?.nama || selectedAppForPrint.applicantName || user?.fullName}</span></p>
-                <p>JAWATAN: <span className="font-normal">{selectedApplicantProfile?.jawatan || selectedAppForPrint.applicantJawatan || "PENOLONG PENGARAH"}</span></p>
+                <p>PEGAWAI: <span className="font-normal">{selectedApplicantProfile?.nama || selectedAppForPrint.applicantName || "PEMOHON"}</span></p>
+                <p>JAWATAN: <span className="font-normal">{selectedApplicantProfile?.jawatan || selectedAppForPrint.applicantJawatan || "PEGAWAI"}</span></p>
                 <p>TEMPAT BERTUGAS: <span className="font-normal">{selectedApplicantProfile?.tempatBertugas || selectedAppForPrint.applicantTempat || "JABATAN KEHAKIMAN SYARIAH MALAYSIA"}</span></p>
                 <p>KENDERAAN DIGUNAKAN: <span className="font-normal underline">{selectedAppForPrint.vehicleType || "Kenderaan Sendiri"}</span></p>
               </div>
