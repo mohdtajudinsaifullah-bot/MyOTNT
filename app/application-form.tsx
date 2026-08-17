@@ -4,7 +4,8 @@ import { useState } from "react";
 import { submitApplication } from "@/app/actions/submit-application";
 
 type OTItem = {
-  tarikh: string;
+  tarikhMula: string;
+  tarikhTamat: string;
   tugasan: string;
   lokasiMahkamah: string;
   bilFail: string;
@@ -13,7 +14,8 @@ type OTItem = {
 };
 
 type TNTItem = {
-  tarikh: string;
+  tarikhMula: string;
+  tarikhTamat: string;
   tugasan: string;
   lokasiMahkamah: string;
   jarakKm: string;
@@ -34,17 +36,18 @@ export default function ApplicationForm() {
   const [approverEmail, setApproverEmail] = useState("");
 
   const [otItems, setOtItems] = useState<OTItem[]>([
-    { tarikh: "", tugasan: "", lokasiMahkamah: "", bilFail: "", tempohJam: "", alasan: "" },
+    { tarikhMula: "", tarikhTamat: "", tugasan: "", lokasiMahkamah: "", bilFail: "", tempohJam: "", alasan: "" },
   ]);
 
   const [tntItems, setTntItems] = useState<TNTItem[]>([
-    { tarikh: "", tugasan: "", lokasiMahkamah: "", jarakKm: "", bilFail: "", alamatLodging: "", alasan: "" },
+    { tarikhMula: "", tarikhTamat: "", tugasan: "", lokasiMahkamah: "", jarakKm: "", bilFail: "", alamatLodging: "", alasan: "" },
   ]);
 
   const [attachments, setAttachments] = useState<File[]>([]);
 
+  // HANDLERS OT
   const addOtRow = () => {
-    setOtItems([...otItems, { tarikh: "", tugasan: "", lokasiMahkamah: "", bilFail: "", tempohJam: "", alasan: "" }]);
+    setOtItems([...otItems, { tarikhMula: "", tarikhTamat: "", tugasan: "", lokasiMahkamah: "", bilFail: "", tempohJam: "", alasan: "" }]);
   };
   const removeOtRow = (index: number) => {
     setOtItems(otItems.filter((_, i) => i !== index));
@@ -55,8 +58,9 @@ export default function ApplicationForm() {
     setOtItems(updated);
   };
 
+  // HANDLERS TNT
   const addTntRow = () => {
-    setTntItems([...tntItems, { tarikh: "", tugasan: "", lokasiMahkamah: "", jarakKm: "", bilFail: "", alamatLodging: "", alasan: "" }]);
+    setTntItems([...tntItems, { tarikhMula: "", tarikhTamat: "", tugasan: "", lokasiMahkamah: "", jarakKm: "", bilFail: "", alamatLodging: "", alasan: "" }]);
   };
   const removeTntRow = (index: number) => {
     setTntItems(tntItems.filter((_, i) => i !== index));
@@ -107,8 +111,8 @@ export default function ApplicationForm() {
         alert("Permohonan berjaya dihantar! 🎉");
         setBulan("");
         setAttachments([]);
-        setOtItems([{ tarikh: "", tugasan: "", lokasiMahkamah: "", bilFail: "", tempohJam: "", alasan: "" }]);
-        setTntItems([{ tarikh: "", tugasan: "", lokasiMahkamah: "", jarakKm: "", bilFail: "", alamatLodging: "", alasan: "" }]);
+        setOtItems([{ tarikhMula: "", tarikhTamat: "", tugasan: "", lokasiMahkamah: "", bilFail: "", tempohJam: "", alasan: "" }]);
+        setTntItems([{ tarikhMula: "", tarikhTamat: "", tugasan: "", lokasiMahkamah: "", jarakKm: "", bilFail: "", alamatLodging: "", alasan: "" }]);
         setSupporterEmail("");
         setApproverEmail("");
       } else {
@@ -140,7 +144,7 @@ export default function ApplicationForm() {
         </div>
       </div>
 
-      {/* Dynamic Selector Permohonan */}
+      {/* Dynamic Selector Jenis Permohonan */}
       <div className="mb-6">
         <label className="block text-sm font-semibold text-slate-700 mb-2">Pilih Jenis Permohonan:</label>
         <div className="flex gap-2">
@@ -158,7 +162,7 @@ export default function ApplicationForm() {
         </div>
       </div>
 
-      {/* Pilihan Kenderaan Yang Digunakan */}
+      {/* Kenderaan Yang Digunakan */}
       {(type === "TNT" || type === "BOTH") && (
         <div className="mb-6 bg-slate-50 border border-slate-200 p-4 rounded-xl">
           <label className="block text-sm font-bold text-slate-800 mb-2">🚗 Kenderaan Yang Digunakan:</label>
@@ -194,7 +198,7 @@ export default function ApplicationForm() {
         </div>
       )}
 
-      {/* Section OT (MENEGAK / STACK) */}
+      {/* Section OT (DENGAN DUA TARIKH: MULA & TAMAT) */}
       {(type === "OT" || type === "BOTH") && (
         <div className="mb-8 border border-amber-200 rounded-lg p-4 bg-amber-50/30">
           <h3 className="text-md font-bold text-amber-800 mb-3 flex items-center gap-2">
@@ -215,7 +219,18 @@ export default function ApplicationForm() {
                 </div>
 
                 <div className="space-y-2">
-                  <input type="date" value={item.tarikh} onChange={(e) => updateOtItem(idx, "tarikh", e.target.value)} className="w-full border p-2.5 rounded-lg text-sm bg-white" />
+                  {/* DUA INPUT TARIKH SEPERTI FLIGHT TICKET */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-amber-900 mb-0.5">🛫 Tarikh Mula OT:</label>
+                      <input type="date" value={item.tarikhMula} onChange={(e) => updateOtItem(idx, "tarikhMula", e.target.value)} className="w-full border p-2 rounded-lg text-sm bg-white" />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-amber-900 mb-0.5">🛬 Tarikh Tamat OT:</label>
+                      <input type="date" value={item.tarikhTamat} onChange={(e) => updateOtItem(idx, "tarikhTamat", e.target.value)} className="w-full border p-2 rounded-lg text-sm bg-white" />
+                    </div>
+                  </div>
+
                   <input placeholder="Tugasan" value={item.tugasan} onChange={(e) => updateOtItem(idx, "tugasan", e.target.value)} className="w-full border p-2.5 rounded-lg text-sm bg-white" />
                   <input placeholder="Lokasi Mahkamah" value={item.lokasiMahkamah} onChange={(e) => updateOtItem(idx, "lokasiMahkamah", e.target.value)} className="w-full border p-2.5 rounded-lg text-sm bg-white" />
                   <input placeholder="Bil. Fail" value={item.bilFail} onChange={(e) => updateOtItem(idx, "bilFail", e.target.value)} className="w-full border p-2.5 rounded-lg text-sm bg-white" />
@@ -231,7 +246,7 @@ export default function ApplicationForm() {
         </div>
       )}
 
-      {/* Section TNT (MENEGAK / STACK) */}
+      {/* Section TNT (DENGAN DUA TARIKH: MULA & TAMAT) */}
       {(type === "TNT" || type === "BOTH") && (
         <div className="mb-8 border border-blue-200 rounded-lg p-4 bg-blue-50/30">
           <h3 className="text-md font-bold text-blue-800 mb-3 flex items-center gap-2">
@@ -252,7 +267,18 @@ export default function ApplicationForm() {
                 </div>
 
                 <div className="space-y-2">
-                  <input type="date" value={item.tarikh} onChange={(e) => updateTntItem(idx, "tarikh", e.target.value)} className="w-full border p-2.5 rounded-lg text-sm bg-white" />
+                  {/* DUA INPUT TARIKH SEPERTI FLIGHT TICKET */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-blue-900 mb-0.5">🛫 Tarikh Mula Tugas:</label>
+                      <input type="date" value={item.tarikhMula} onChange={(e) => updateTntItem(idx, "tarikhMula", e.target.value)} className="w-full border p-2 rounded-lg text-sm bg-white" />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-blue-900 mb-0.5">🛬 Tarikh Tamat Tugas:</label>
+                      <input type="date" value={item.tarikhTamat} onChange={(e) => updateTntItem(idx, "tarikhTamat", e.target.value)} className="w-full border p-2 rounded-lg text-sm bg-white" />
+                    </div>
+                  </div>
+
                   <input placeholder="Tugasan" value={item.tugasan} onChange={(e) => updateTntItem(idx, "tugasan", e.target.value)} className="w-full border p-2.5 rounded-lg text-sm bg-white" />
                   <input placeholder="Lokasi Mahkamah" value={item.lokasiMahkamah} onChange={(e) => updateTntItem(idx, "lokasiMahkamah", e.target.value)} className="w-full border p-2.5 rounded-lg text-sm bg-white" />
                   <input placeholder="Jarak (KM)" value={item.jarakKm} onChange={(e) => updateTntItem(idx, "jarakKm", e.target.value)} className="w-full border p-2.5 rounded-lg text-sm bg-white" />
@@ -269,7 +295,7 @@ export default function ApplicationForm() {
         </div>
       )}
 
-      {/* 📧 Bahagian Emel Penyemak & Pelulus */}
+      {/* Emel Penyemak & Pelulus */}
       <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm my-6">
         <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
           <span>✉️</span> Maklumat Penyemak & Pelulus
@@ -306,7 +332,7 @@ export default function ApplicationForm() {
         </div>
       </div>
 
-      {/* Section Lampiran Dokumen */}
+      {/* Lampiran Dokumen */}
       <div className="mb-8 border border-slate-200 rounded-lg p-4 bg-slate-50">
         <h3 className="text-md font-bold text-slate-800 mb-2 flex items-center gap-2">
           📎 Lampiran Dokumen Sokongan (Surat Arahan / Resit / Dokumen)

@@ -167,12 +167,23 @@ export default function DashboardPage() {
   };
 
   const formatDateOnly = (dateStr: string) => {
-    if (!dateStr) return "-";
+    if (!dateStr) return "";
     try {
       const d = new Date(dateStr);
       if (isNaN(d.getTime())) return dateStr.split("T")[0] || dateStr;
       return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
     } catch { return dateStr; }
+  };
+
+  // HELPER PAPARAN JULAT TARIKH (MULA - TAMAT)
+  const renderDateRange = (item: any) => {
+    const mula = formatDateOnly(item.tarikhMula || item.tarikh);
+    const tamat = formatDateOnly(item.tarikhTamat);
+
+    if (mula && tamat && mula !== tamat) {
+      return `${mula} - ${tamat}`;
+    }
+    return mula || tamat || "-";
   };
 
   const isRecentUpdate = (tarikhStr: string) => {
@@ -182,36 +193,25 @@ export default function DashboardPage() {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) <= 7;
   };
 
-  if (!isLoaded || loading) {
-    return <div className="p-8 text-center text-gray-600 font-medium">Sedang memuatkan Dashboard MyOTNT...</div>;
-  }
-
-  // 1. Tapis permohonan mengikut peranan (Role Filter)
   const roleFilteredApps = applications.filter(app => {
     if (userRole === "MASTER_ADMIN") return true;
     if (userRole === "PENYOKONG" || app.supporterEmail?.toLowerCase() === currentUserEmail) {
-      return true; // Penyokong boleh lihat semua status semakan
+      return true;
     }
     if (userRole === "PELULUS" || app.approverEmail?.toLowerCase() === currentUserEmail) {
-      return true; // Pelulus boleh lihat semua status semakan
+      return true;
     }
     return app.userId === user?.id || app.supporterEmail?.toLowerCase() === currentUserEmail || app.applicantEmail?.toLowerCase() === currentUserEmail;
   });
 
-  // 2. Tapis mengikut Carian Nama, Status, dan Negeri / Tempat Bertugas
   const filteredApps = roleFilteredApps.filter(app => {
     const applicantProf = profiles.find(p => p.email.toLowerCase() === (app.applicantEmail?.toLowerCase() || "")) || {};
     const appName = (applicantProf.nama || app.applicantName || "").toLowerCase();
     const appTempat = (applicantProf.tempatBertugas || app.applicantTempat || "").toLowerCase();
     const appId = (app.applicationId || "").toLowerCase();
 
-    // Matching Carian Nama / ID
     const matchSearch = searchQuery === "" || appName.includes(searchQuery.toLowerCase()) || appId.includes(searchQuery.toLowerCase());
-    
-    // Matching Status
     const matchStatus = filterStatus === "ALL" || app.status === filterStatus;
-
-    // Matching Negeri / Tempat
     const matchState = filterState === "ALL" || appTempat.includes(filterState.toLowerCase());
 
     return matchSearch && matchStatus && matchState;
@@ -287,7 +287,6 @@ export default function DashboardPage() {
       {mainTab === "status" && (
         <div className="print:hidden bg-white rounded-xl shadow-sm border overflow-hidden">
           
-          {/* HEADER JADUAL & BOTON REFRESH */}
           <div className="p-4 border-b bg-gray-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
             <div>
               <h2 className="font-semibold text-gray-800">Rekod & Status Permohonan Saya / Semakan</h2>
@@ -298,9 +297,8 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {/* 🔍 RUANGAN FILTER CARIAN PINTAR (NAMA, STATUS, NEGERI) */}
+          {/* RUANGAN FILTER CARIAN PINTAR */}
           <div className="p-4 bg-slate-50 border-b grid grid-cols-1 md:grid-cols-3 gap-3">
-            {/* 1. CARIAN NAMA / ID */}
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">🔍 Cari Nama / ID Permohonan:</label>
               <input
@@ -312,7 +310,6 @@ export default function DashboardPage() {
               />
             </div>
 
-            {/* 2. FILTER STATUS */}
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">📌 Tapis Mengikut Status:</label>
               <select
@@ -328,7 +325,6 @@ export default function DashboardPage() {
               </select>
             </div>
 
-            {/* 3. FILTER NEGERI / TEMPAT BERTUGAS */}
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">🏛️ Tapis Mengikut Negeri / Lokasi:</label>
               <select
@@ -416,7 +412,6 @@ export default function DashboardPage() {
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex justify-center gap-1.5 flex-wrap">
-                            {/* TINDAKAN PENYOKONG */}
                             {(userRole === "PENYOKONG" || userRole === "MASTER_ADMIN") && app.status === "PENDING" && (
                               <>
                                 <button onClick={() => openActionModal(app, "DISOKONG")} className="bg-blue-600 text-white text-xs px-3 py-1 rounded font-bold hover:bg-blue-700 shadow-sm">
@@ -428,7 +423,6 @@ export default function DashboardPage() {
                               </>
                             )}
 
-                            {/* TINDAKAN PELULUS */}
                             {(userRole === "PELULUS" || userRole === "MASTER_ADMIN") && app.status === "DISOKONG" && (
                               <>
                                 <button onClick={() => openActionModal(app, "DILULUSKAN")} className="bg-green-600 text-white text-xs px-3 py-1 rounded font-bold hover:bg-green-700 shadow-sm">
@@ -440,7 +434,6 @@ export default function DashboardPage() {
                               </>
                             )}
 
-                            {/* DOKUMEN RASMI */}
                             {app.status === "DILULUSKAN" && (
                               <button onClick={() => setSelectedAppForPrint(app)} className="bg-gray-800 text-white text-xs px-3 py-1.5 rounded font-bold hover:bg-black flex items-center gap-1 shadow-sm">
                                 🖨️ Surat / Slip PDF
@@ -651,7 +644,7 @@ export default function DashboardPage() {
                 <p>Jabatan Kehakiman Syariah Malaysia (JKSM)</p>
               </div>
 
-              {/* JADUAL OT */}
+              {/* JADUAL OT (TARIKH JULAT - MULA HINGGA TAMAT) */}
               {(selectedAppForPrint.type === "OT" || selectedAppForPrint.type === "BOTH") && (
                 <div className="my-2">
                   {selectedAppForPrint.type === "BOTH" && <p className="font-bold my-1 text-xs uppercase bg-gray-100 p-1 border">1. Perincian Kerja Lebih Masa (OT)</p>}
@@ -663,7 +656,7 @@ export default function DashboardPage() {
                         <th className="border border-black p-1">LOKASI MAHKAMAH</th>
                         <th className="border border-black p-1">BIL. FAIL</th>
                         <th className="border border-black p-1">TEMPOH JAM</th>
-                        <th className="border border-black p-1">TARIKH</th>
+                        <th className="border border-black p-1">TARIKH (MULA - TAMAT)</th>
                         <th className="border border-black p-1">ALASAN PERMOHONAN</th>
                       </tr>
                     </thead>
@@ -675,7 +668,7 @@ export default function DashboardPage() {
                           <td className="border border-black p-1">{item.lokasiMahkamah}</td>
                           <td className="border border-black p-1">{item.bilFail}</td>
                           <td className="border border-black p-1">{item.tempohJam}</td>
-                          <td className="border border-black p-1">{formatDateOnly(item.tarikh)}</td>
+                          <td className="border border-black p-1 font-semibold">{renderDateRange(item)}</td>
                           <td className="border border-black p-1 text-left">{item.alasan}</td>
                         </tr>
                       ))}
@@ -684,7 +677,7 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {/* JADUAL TNT */}
+              {/* JADUAL TNT (TARIKH JULAT - MULA HINGGA TAMAT) */}
               {(selectedAppForPrint.type === "TNT" || selectedAppForPrint.type === "BOTH") && (
                 <div className="my-2">
                   {selectedAppForPrint.type === "BOTH" && <p className="font-bold my-1 text-xs uppercase bg-gray-100 p-1 border">2. Perincian Tugas Luar Stesen (TNT)</p>}
@@ -697,7 +690,7 @@ export default function DashboardPage() {
                         <th className="border border-black p-1">JARAK DARI TEMPAT BERTUGAS (KM)</th>
                         <th className="border border-black p-1">BIL. FAIL</th>
                         <th className="border border-black p-1">ALAMAT LODGING / HOTEL</th>
-                        <th className="border border-black p-1">TARIKH</th>
+                        <th className="border border-black p-1">TARIKH (MULA - TAMAT)</th>
                         <th className="border border-black p-1">ALASAN PERMOHONAN</th>
                       </tr>
                     </thead>
@@ -710,7 +703,7 @@ export default function DashboardPage() {
                           <td className="border border-black p-1">{item.jarakKm}</td>
                           <td className="border border-black p-1">{item.bilFail}</td>
                           <td className="border border-black p-1">{item.alamatLodging}</td>
-                          <td className="border border-black p-1">{formatDateOnly(item.tarikh)}</td>
+                          <td className="border border-black p-1 font-semibold">{renderDateRange(item)}</td>
                           <td className="border border-black p-1 text-left">{item.alasan}</td>
                         </tr>
                       ))}
