@@ -114,3 +114,51 @@ export async function deleteUserAction(email: string) {
     return { success: false, error: err.message };
   }
 }
+
+// ------------------------------------------------------------------
+// FUNGSI PENDAFTARAN & LOG MASUK DIRECT (TANPA CLERK)
+// ------------------------------------------------------------------
+
+export async function registerUserDirectAction(formData: { name: string; email: string; password: string }) {
+  try {
+    if (!googleScriptUrl) throw new Error("URL Google Script tidak ditemui.");
+
+    const res = await fetch(googleScriptUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "registerUser",
+        ...formData
+      }),
+    });
+
+    const data = await res.json();
+    if (data.result === "error") throw new Error(data.message);
+
+    return { success: true, message: data.message };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function loginUserDirectAction(credentials: { email: string; password: string }) {
+  try {
+    if (!googleScriptUrl) throw new Error("URL Google Script tidak ditemui.");
+
+    const res = await fetch(googleScriptUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "loginUser",
+        ...credentials
+      }),
+    });
+
+    const data = await res.json();
+    if (data.result === "error") throw new Error(data.message);
+
+    return { success: true, user: data.user };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}

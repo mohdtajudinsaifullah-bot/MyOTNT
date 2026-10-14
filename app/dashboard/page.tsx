@@ -1,7 +1,7 @@
 "use client";
 
-import { useUser, UserButton } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { 
   fetchDashboardData, 
   updateApplicationStatus, 
@@ -12,7 +12,9 @@ import {
 import ApplicationForm from "../application-form";
 
 export default function DashboardPage() {
-  const { user, isLoaded } = useUser();
+  const router = useRouter();
+  const [currentUser, setCurrentUser] = useState<{ name: string; email: string; role: string } | null>(null);
+  
   const [loading, setLoading] = useState(true);
   const [applications, setApplications] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -32,7 +34,7 @@ export default function DashboardPage() {
   const [profNoTel, setProfNoTel] = useState("");
   const [isSavingProf, setIsSavingProf] = useState(false);
 
-  // State Modal Actions (Sokong / Lulus / Tolak)
+  // State Modal Actions
   const [actionModalApp, setActionModalApp] = useState<any>(null);
   const [actionType, setActionType] = useState<"DISOKONG" | "DILULUSKAN" | "DITOLAK" | null>(null);
   const [officerName, setOfficerName] = useState("");
@@ -47,36 +49,50 @@ export default function DashboardPage() {
   const [formStatus, setFormStatus] = useState("AKTIF");
   const [isSubmittingUser, setIsSubmittingUser] = useState(false);
 
-  const currentUserEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase() || "";
+  const currentUserEmail = currentUser?.email?.toLowerCase() || "";
   const currentUserRecord = users.find(u => u.email.toLowerCase() === currentUserEmail);
-  const userRole = currentUserRecord ? currentUserRecord.role : "PEMOHON";
+  const userRole = currentUserRecord ? currentUserRecord.role : (currentUser?.role || "PEMOHON");
 
-  const loadData = async () => {
+  // LOAD DATA SPREADSHEET
+  const loadData = async (userEmail?: string) => {
     setLoading(true);
+    const targetEmail = userEmail || currentUserEmail;
     const res = await fetchDashboardData();
+
     if (res.success) {
       setApplications(res.applications);
       setUsers(res.users);
       setProfiles(res.profiles);
 
-      const myProf = (res.profiles || []).find((p: any) => p.email.toLowerCase() === currentUserEmail);
+      const myProf = (res.profiles || []).find((p: any) => p.email.toLowerCase() === targetEmail);
       if (myProf) {
-        setProfNama(myProf.nama || user?.fullName || "");
+        setProfNama(myProf.nama || currentUser?.name || "");
         setProfJawatan(myProf.jawatan || "");
         setProfTempat(myProf.tempatBertugas || "");
         setProfNoTel(myProf.noTel || "");
       } else {
-        setProfNama(user?.fullName || "");
+        setProfNama(currentUser?.name || "");
       }
     }
     setLoading(false);
   };
 
+  // AMBIL SESI USER DARI LOCALSTORAGE
   useEffect(() => {
-    if (isLoaded) {
-      loadData();
+    const savedUser = localStorage.getItem("myotnt_user");
+    if (!savedUser) {
+      router.push("/login");
+    } else {
+      const parsed = JSON.parse(savedUser);
+      setCurrentUser(parsed);
+      loadData(parsed.email.toLowerCase());
     }
-  }, [isLoaded]);
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem("myotnt_user");
+    router.push("/login");
+  };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,7 +117,7 @@ export default function DashboardPage() {
   const openActionModal = (app: any, newStatus: "DISOKONG" | "DILULUSKAN" | "DITOLAK") => {
     setActionModalApp(app);
     setActionType(newStatus);
-    setOfficerName(user?.fullName || "");
+    setOfficerName(currentUser?.name || "");
     setOfficerJawatan(newStatus === "DISOKONG" ? "PENYOKONG / PENYEMAK" : "PENGARAH BPKR");
     setSignatureBase64(null);
   };
@@ -175,7 +191,6 @@ export default function DashboardPage() {
     } catch { return dateStr; }
   };
 
-  // HELPER PAPARAN JULAT TARIKH (MULA - TAMAT)
   const renderDateRange = (item: any) => {
     const mula = formatDateOnly(item.tarikhMula || item.tarikh);
     const tamat = formatDateOnly(item.tarikhTamat);
@@ -193,15 +208,15 @@ export default function DashboardPage() {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) <= 7;
   };
 
+  if (loading || !currentUser) {
+    return <div className="p-8 text-center text-gray-600 font-medium">Sedang memuatkan Dashboard MyOTNT...</div>;
+  }
+
   const roleFilteredApps = applications.filter(app => {
     if (userRole === "MASTER_ADMIN") return true;
-    if (userRole === "PENYOKONG" || app.supporterEmail?.toLowerCase() === currentUserEmail) {
-      return true;
-    }
-    if (userRole === "PELULUS" || app.approverEmail?.toLowerCase() === currentUserEmail) {
-      return true;
-    }
-    return app.userId === user?.id || app.supporterEmail?.toLowerCase() === currentUserEmail || app.applicantEmail?.toLowerCase() === currentUserEmail;
+    if (userRole === "PENYOKONG" || app.supporterEmail?.toLowerCase() === currentUserEmail) return true;
+    if (userRole === "PELULUS" || app.approverEmail?.toLowerCase() === currentUserEmail) return true;
+    return app.supporterEmail?.toLowerCase() === currentUserEmail || app.applicantEmail?.toLowerCase() === currentUserEmail;
   });
 
   const filteredApps = roleFilteredApps.filter(app => {
@@ -233,7 +248,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-gray-800">Sistem Permohonan TNT & OT (JKSM)</h1>
           <p className="text-xs md:text-sm text-gray-500 mt-1">
-            Selamat datang, <span className="font-semibold text-gray-700">{user?.fullName || user?.firstName}</span> ({currentUserEmail}) | 
+            Selamat datang, <span className="font-semibold text-gray-700">{currentUser.name}</span> ({currentUserEmail}) | 
             Peranan: <span className="bg-blue-100 text-blue-800 text-xs px-2.5 py-0.5 rounded font-bold ml-1">{userRole}</span>
           </p>
         </div>
@@ -278,7 +293,12 @@ export default function DashboardPage() {
           )}
 
           <div className="border-l pl-3 ml-1">
-            <UserButton />
+            <button
+              onClick={handleLogout}
+              className="bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 font-bold px-3 py-1.5 rounded-lg text-xs"
+            >
+              🚪 Log Keluar
+            </button>
           </div>
         </div>
       </div>
@@ -292,7 +312,7 @@ export default function DashboardPage() {
               <h2 className="font-semibold text-gray-800">Rekod & Status Permohonan Saya / Semakan</h2>
               <p className="text-xs text-gray-500">Jumlah rekod dijumpai: <span className="font-bold text-blue-600">{filteredApps.length}</span></p>
             </div>
-            <button onClick={loadData} className="text-xs bg-gray-200 hover:bg-gray-300 px-3 py-1.5 rounded text-gray-700 font-medium">
+            <button onClick={() => loadData()} className="text-xs bg-gray-200 hover:bg-gray-300 px-3 py-1.5 rounded text-gray-700 font-medium">
               🔄 Refresh Data
             </button>
           </div>
@@ -549,7 +569,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* MODAL ACTIONS: SOKONG / LULUS DENGAN TANDATANGAN DIGITAL */}
+      {/* MODAL ACTIONS */}
       {actionModalApp && (
         <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center p-4">
           <div className="bg-white max-w-md w-full rounded-xl p-6 shadow-xl border">
@@ -599,7 +619,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* PRATONTON DOKUMEN RASMI PEMOHON UNTUK PRINT / SAVE PDF */}
+      {/* PRATONTON DOKUMEN RASMI */}
       {selectedAppForPrint && (
         <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-start overflow-y-auto p-4 print:p-0 print:static print:bg-transparent">
           <div className="bg-white w-full max-w-4xl rounded-xl p-8 shadow-2xl relative border print:shadow-none print:border-none print:w-full print:p-0">
@@ -644,7 +664,7 @@ export default function DashboardPage() {
                 <p>Jabatan Kehakiman Syariah Malaysia (JKSM)</p>
               </div>
 
-              {/* JADUAL OT (TARIKH JULAT - MULA HINGGA TAMAT) */}
+              {/* JADUAL OT */}
               {(selectedAppForPrint.type === "OT" || selectedAppForPrint.type === "BOTH") && (
                 <div className="my-2">
                   {selectedAppForPrint.type === "BOTH" && <p className="font-bold my-1 text-xs uppercase bg-gray-100 p-1 border">1. Perincian Kerja Lebih Masa (OT)</p>}
@@ -677,7 +697,7 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {/* JADUAL TNT (TARIKH JULAT - MULA HINGGA TAMAT) */}
+              {/* JADUAL TNT */}
               {(selectedAppForPrint.type === "TNT" || selectedAppForPrint.type === "BOTH") && (
                 <div className="my-2">
                   {selectedAppForPrint.type === "BOTH" && <p className="font-bold my-1 text-xs uppercase bg-gray-100 p-1 border">2. Perincian Tugas Luar Stesen (TNT)</p>}
@@ -712,50 +732,34 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {/* RUANGAN TANDATANGAN TERAS */}
+              {/* TANDATANGAN */}
               <div className="grid grid-cols-2 gap-8 pt-6 border-t border-black mt-8">
-                
-                {/* DISOKONG OLEH */}
                 <div className="space-y-1 relative">
                   <p className="font-bold underline">Disokong Oleh:</p>
-                  
                   <div className="h-16 relative flex items-end mb-2">
-                    {selectedAppForPrint.supporterSignUrl ? (
-                      <img 
-                        src={selectedAppForPrint.supporterSignUrl} 
-                        alt="Sign Supporter" 
-                        className="h-14 object-contain absolute bottom-1 left-2 z-10"
-                      />
-                    ) : null}
+                    {selectedAppForPrint.supporterSignUrl && (
+                      <img src={selectedAppForPrint.supporterSignUrl} alt="Sign Supporter" className="h-14 object-contain absolute bottom-1 left-2 z-10" />
+                    )}
                     <div className="w-full border-b border-dotted border-black"></div>
                   </div>
-
                   <p>Nama Pegawai : <span className="font-semibold">{selectedAppForPrint.supporterName || selectedAppForPrint.supporterEmail}</span></p>
                   <p>Jawatan : <span className="font-semibold">{selectedAppForPrint.supporterJawatan || "PENYOKONG / PENYEMAK"}</span></p>
                   <p>Tarikh : <span className="font-semibold">{formatDateOnly(selectedAppForPrint.tarikhMohon)}</span></p>
                 </div>
 
-                {/* DILULUSKAN OLEH */}
                 <div className="space-y-1 relative">
                   <p className="font-bold underline">Diluluskan Oleh:</p>
-                  
                   <div className="h-16 relative flex items-end mb-2">
-                    {selectedAppForPrint.approverSignUrl ? (
-                      <img 
-                        src={selectedAppForPrint.approverSignUrl} 
-                        alt="Sign Approver" 
-                        className="h-14 object-contain absolute bottom-1 left-2 z-10" 
-                      />
-                    ) : null}
+                    {selectedAppForPrint.approverSignUrl && (
+                      <img src={selectedAppForPrint.approverSignUrl} alt="Sign Approver" className="h-14 object-contain absolute bottom-1 left-2 z-10" />
+                    )}
                     <div className="w-full border-b border-dotted border-black"></div>
                   </div>
-
                   <p className="font-semibold">{selectedAppForPrint.approverName || "Pengarah"}</p>
                   <p>Bahagian Keurusetiaan dan Rekod (BPKR)</p>
                   <p>Jabatan Kehakiman Syariah Malaysia (JKSM)</p>
                   <p>Tarikh : <span className="font-semibold">{formatDateOnly(selectedAppForPrint.tarikhMohon)}</span></p>
                 </div>
-
               </div>
 
             </div>
