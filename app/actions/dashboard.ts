@@ -162,3 +162,25 @@ export async function loginUserDirectAction(credentials: { email: string; passwo
     return { success: false, error: err.message };
   }
 }
+
+export async function resetPasswordDirectAction(payload: { email: string; newPassword: string }) {
+  try {
+    if (!googleScriptUrl) throw new Error("URL Google Script tidak ditemui.");
+
+    const res = await fetch(googleScriptUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "resetPassword",
+        ...payload
+      }),
+    });
+
+    const data = await res.json();
+    if (data.result === "error") throw new Error(data.message);
+
+    return { success: true, message: data.message };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
