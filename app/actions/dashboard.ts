@@ -59,12 +59,19 @@ export async function saveProfileAction(profileData: {
   try {
     if (!googleScriptUrl) throw new Error("URL Google Script tidak ditemui.");
 
+    // Pastikan No Tel dikekalkan '0' di hadapan dengan menambah tanda '
+    let rawNoTel = profileData.noTel ? profileData.noTel.trim() : "";
+    if (rawNoTel && !rawNoTel.startsWith("'")) {
+      rawNoTel = `'${rawNoTel}`;
+    }
+
     const res = await fetch(googleScriptUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "saveProfile",
-        ...profileData
+        ...profileData,
+        noTel: rawNoTel
       }),
     });
 
