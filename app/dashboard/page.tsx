@@ -241,6 +241,41 @@ export default function DashboardPage() {
     ? profiles.find(p => p.email.toLowerCase() === appApplicantEmail)
     : null;
 
+    // 1. HELPER CONVERT URUTAN NOMBOR KE PERKATAAN MALAY
+  const getOrdinalText = (count: number) => {
+    const ordinals = [
+      "PERTAMA", "KEDUA", "KETIGA", "KEEMPAT", "KELIMA", 
+      "KEENAM", "KETUJUH", "KELAPAN", "KESEMBILAN", "KESEPULUH"
+    ];
+    return ordinals[count - 1] || `KE-${count}`;
+  };
+
+  // 2. KIRA PERMOHONAN KE-BERAPA BAGI PEMOHON PADA BULAN TERSEBUT
+  const getApplicationSequenceText = (currentApp: any) => {
+    if (!currentApp) return "PERTAMA";
+
+    const applicantMail = (currentApp.applicantEmail || "").toLowerCase().trim();
+    const appMonth = (currentApp.monthApplied || "").toUpperCase().trim();
+
+    // Semak semua permohonan milik pemohon ini pada bulan/tahun tersebut
+    const sameMonthApps = applications.filter((a) => {
+      const aMail = (a.applicantEmail || "").toLowerCase().trim();
+      const aMonth = (a.monthApplied || "").toUpperCase().trim();
+      return aMail === applicantMail && aMonth === appMonth;
+    });
+
+    // Susun mengikut tarikh mohon / ID
+    sameMonthApps.sort((a, b) => new Date(a.tarikhMohon).getTime() - new Date(b.tarikhMohon).getTime());
+
+    // Cari kedudukan (index) permohonan semasa
+    const index = sameMonthApps.findIndex((a) => a.applicationId === currentApp.applicationId);
+    
+    // Jika tidak dijumpai (fallback), sekurang-kurangnya kedudukan ke-1
+    const count = index >= 0 ? index + 1 : 1;
+
+    return getOrdinalText(count);
+  };
+  
   return (
     <div className="max-w-7xl mx-auto p-4 md:p-6 print:p-0 print:max-w-none print:w-full">
       {/* HEADER BAR UTAMA */}
@@ -645,7 +680,7 @@ export default function DashboardPage() {
                 {selectedAppForPrint.type === "BOTH" && "PERMOHONAN KEBENARAN MENJALANKAN TUGAS LUAR STESEN DAN BEKERJA LEBIH MASA (SERENTAK)"}
                 
                 <div className="text-xs font-medium mt-1">
-                  BULAN: <span className="underline font-bold">{selectedAppForPrint.monthApplied}</span> | BIL. PERMOHONAN PADA BULAN INI: <span className="underline font-bold">{selectedAppForPrint.applicationId}</span>
+                  BULAN: <span className="underline font-bold">{(selectedAppForPrint.monthApplied || "").toUpperCase()}</span> | PERMOHONAN kali: <span className="underline font-bold">{getApplicationSequenceText(selectedAppForPrint)}</span>
                 </div>
               </div>
 

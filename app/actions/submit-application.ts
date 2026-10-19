@@ -1,25 +1,21 @@
 "use server";
 
-import { auth, currentUser } from "@clerk/nextjs/server";
-
 const googleScriptUrl = process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL;
 
 export async function submitApplication(formData: FormData) {
   try {
     if (!googleScriptUrl) {
-      throw new Error("NEXT_PUBLIC_GOOGLE_SCRIPT_URL tidak ditetapkan dalam fail .env atau Vercel.");
+      throw new Error("NEXT_PUBLIC_GOOGLE_SCRIPT_URL tidak ditetapkan.");
     }
-
-    const { userId } = await auth();
-    const user = await currentUser();
-
-    const activeUserId = userId || user?.id || null;
-    const applicantEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase() || "";
-    const applicantName = user?.fullName || user?.firstName || "";
 
     const applicationId = `APP-${Date.now()}`;
     const type = formData.get("type") as string;
-    const monthApplied = `${formData.get("bulan")}/${formData.get("tahun")}`;
+    
+    // Auto Tukar Bulan & Tahun ke Huruf Besar
+    const bulan = (formData.get("bulan") as string || "").toUpperCase().trim();
+    const tahun = (formData.get("tahun") as string || "").trim();
+    const monthApplied = `${bulan}/${tahun}`;
+
     const vehicleType = (formData.get("vehicleType") as string) || "Kenderaan Sendiri";
     const otItems = JSON.parse((formData.get("otItems") as string) || "[]");
     const tntItems = JSON.parse((formData.get("tntItems") as string) || "[]");
@@ -46,9 +42,6 @@ export async function submitApplication(formData: FormData) {
     const payload = {
       action: "submitApplication",
       applicationId,
-      userId: activeUserId,
-      applicantEmail,
-      applicantName,
       type,
       monthApplied,
       vehicleType,
