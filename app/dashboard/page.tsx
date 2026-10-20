@@ -200,6 +200,27 @@ export default function DashboardPage() {
     }
   };
 
+  // HELPER FORMAT PAPARAN BULAN/TAHUN (HURUF BESAR & TUKAR ISO STRING KE NAMA BULAN)
+  const formatDisplayMonth = (str: string) => {
+    if (!str) return "-";
+    const cleanStr = str.trim();
+
+    if (cleanStr.includes("T") || (cleanStr.includes("-") && cleanStr.length > 10)) {
+      try {
+        const d = new Date(cleanStr);
+        if (!isNaN(d.getTime())) {
+          const monthNames = [
+            "JANUARI", "FEBRUARI", "MAC", "APRIL", "MEI", "JUN",
+            "JULAI", "OGOS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DISEMBER"
+          ];
+          return `${monthNames[d.getMonth()]}/${d.getFullYear()}`;
+        }
+      } catch (e) {}
+    }
+
+    return cleanStr.toUpperCase();
+  };
+
   const renderDateRange = (item: any) => {
     const mula = formatDateOnly(item.tarikhMula || item.tarikh);
     const tamat = formatDateOnly(item.tarikhTamat);
@@ -264,11 +285,11 @@ export default function DashboardPage() {
     if (!currentApp) return "PERTAMA";
 
     const applicantMail = (currentApp.applicantEmail || "").toLowerCase().trim();
-    const appMonth = (currentApp.monthApplied || "").toUpperCase().trim();
+    const appMonth = formatDisplayMonth(currentApp.monthApplied);
 
     const sameMonthApps = applications.filter((a) => {
       const aMail = (a.applicantEmail || "").toLowerCase().trim();
-      const aMonth = (a.monthApplied || "").toUpperCase().trim();
+      const aMonth = formatDisplayMonth(a.monthApplied);
       return aMail === applicantMail && aMonth === appMonth;
     });
 
@@ -708,7 +729,7 @@ export default function DashboardPage() {
                 {selectedAppForPrint.type === "BOTH" && "PERMOHONAN KEBENARAN MENJALANKAN TUGAS LUAR STESEN DAN BEKERJA LEBIH MASA (SERENTAK)"}
                 
                 <div className="text-xs font-medium mt-1">
-                  BULAN: <span className="underline font-bold">{(selectedAppForPrint.monthApplied || "").toUpperCase()}</span> | PERMOHONAN kali: <span className="underline font-bold">{getApplicationSequenceText(selectedAppForPrint)}</span>
+                  BULAN: <span className="underline font-bold">{formatDisplayMonth(selectedAppForPrint.monthApplied)}</span> | PERMOHONAN KALI: <span className="underline font-bold">{getApplicationSequenceText(selectedAppForPrint)}</span>
                 </div>
               </div>
 
