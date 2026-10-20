@@ -437,21 +437,31 @@ export default function DashboardPage() {
 
                     return (
                       <tr key={app.applicationId} className="hover:bg-gray-50">
+                        {/* ID & PEMOHON BOLEH DIKLIK UNTUK SEMAK DOKUMEN DRAF */}
                         <td className="px-4 py-3 font-medium text-gray-900">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold">{app.applicationId}</span>
-                            {showNewBadge && (
-                              <span className="relative flex h-2.5 w-2.5">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                          <button
+                            onClick={() => setSelectedAppForPrint(app)}
+                            className="text-left group focus:outline-none"
+                            title="Klik untuk semak butiran permohonan"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-blue-600 group-hover:underline flex items-center gap-1">
+                                📄 {app.applicationId}
                               </span>
-                            )}
-                          </div>
-                          <div className="text-xs text-gray-500 font-semibold mt-0.5">{displayName}</div>
-                          {displayTempat && <div className="text-[10px] text-gray-400 uppercase">{displayTempat}</div>}
+                              {showNewBadge && (
+                                <span className="relative flex h-2.5 w-2.5">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-700 font-semibold mt-0.5 group-hover:text-blue-700">{displayName}</div>
+                            {displayTempat && <div className="text-[10px] text-gray-400 uppercase">{displayTempat}</div>}
+                          </button>
                         </td>
+
                         <td className="px-4 py-3 font-medium">{app.type}</td>
-                        <td className="px-4 py-3">{app.monthApplied}</td>
+                        <td className="px-4 py-3 font-semibold">{formatDisplayMonth(app.monthApplied)}</td>
                         <td className="px-4 py-3 text-xs">{formatDateOnly(app.tarikhMohon)}</td>
                         <td className="px-4 py-3">
                           <span className={`px-2.5 py-1 text-xs rounded font-bold flex items-center gap-1 w-fit ${
@@ -468,8 +478,21 @@ export default function DashboardPage() {
                             <a href={app.fileUrls} target="_blank" rel="noreferrer" className="text-blue-600 underline text-xs font-semibold">Lihat Fail</a>
                           ) : "-"}
                         </td>
+
+                        {/* RUANGAN TINDAKAN (BUTANG SEMAK + SOKONG/LULUS/TOLAK) */}
                         <td className="px-4 py-3 text-center">
                           <div className="flex justify-center gap-1.5 flex-wrap">
+                            
+                            {/* BUTANG SEMAK DOKUMEN */}
+                            <button 
+                              onClick={() => setSelectedAppForPrint(app)} 
+                              className="bg-slate-700 text-white text-xs px-2.5 py-1 rounded font-bold hover:bg-slate-900 shadow-sm flex items-center gap-1"
+                              title="Semak butiran permohonan"
+                            >
+                              🔍 Semak
+                            </button>
+
+                            {/* TINDAKAN PENYOKONG */}
                             {(userRole === "PENYOKONG" || userRole === "MASTER_ADMIN") && app.status === "PENDING" && (
                               <>
                                 <button onClick={() => openActionModal(app, "DISOKONG")} className="bg-blue-600 text-white text-xs px-3 py-1 rounded font-bold hover:bg-blue-700 shadow-sm">
@@ -481,6 +504,7 @@ export default function DashboardPage() {
                               </>
                             )}
 
+                            {/* TINDAKAN PELULUS */}
                             {(userRole === "PELULUS" || userRole === "MASTER_ADMIN") && app.status === "DISOKONG" && (
                               <>
                                 <button onClick={() => openActionModal(app, "DILULUSKAN")} className="bg-green-600 text-white text-xs px-3 py-1 rounded font-bold hover:bg-green-700 shadow-sm">
@@ -492,9 +516,10 @@ export default function DashboardPage() {
                               </>
                             )}
 
+                            {/* CETAK PDF RASMI HANYA BILA DAH DILULUSKAN */}
                             {app.status === "DILULUSKAN" && (
-                              <button onClick={() => setSelectedAppForPrint(app)} className="bg-gray-800 text-white text-xs px-3 py-1.5 rounded font-bold hover:bg-black flex items-center gap-1 shadow-sm">
-                                🖨️ Surat / Slip PDF
+                              <button onClick={() => setSelectedAppForPrint(app)} className="bg-blue-800 text-white text-xs px-3 py-1.5 rounded font-bold hover:bg-black flex items-center gap-1 shadow-sm">
+                                🖨️ PDF
                               </button>
                             )}
                           </div>
@@ -770,34 +795,46 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {/* TANDATANGAN */}
+              {/* RUANGAN TANDATANGAN */}
               <div className="grid grid-cols-2 gap-8 pt-6 border-t border-black mt-8">
+                
+                {/* DISOKONG OLEH */}
                 <div className="space-y-1 relative">
                   <p className="font-bold underline">Disokong Oleh:</p>
+
                   <div className="h-16 relative flex items-end mb-2">
-                    {selectedAppForPrint.supporterSignUrl && (
+                    {selectedAppForPrint.supporterSignUrl && (selectedAppForPrint.status === "DISOKONG" || selectedAppForPrint.status === "DILULUSKAN") ? (
                       <img src={selectedAppForPrint.supporterSignUrl} alt="Sign Supporter" className="h-14 object-contain absolute bottom-1 left-2 z-10" />
+                    ) : (
+                      <span className="text-gray-400 italic text-[11px] mb-2">(BELUM DISOKONG)</span>
                     )}
                     <div className="w-full border-b border-dotted border-black"></div>
                   </div>
-                  <p>Nama Pegawai : <span className="font-semibold">{selectedAppForPrint.supporterName || selectedAppForPrint.supporterEmail}</span></p>
+
+                  <p>Nama Pegawai : <span className="font-semibold">{selectedAppForPrint.supporterName || selectedAppForPrint.supporterEmail || "-"}</span></p>
                   <p>Jawatan : <span className="font-semibold">{selectedAppForPrint.supporterJawatan || "PENYOKONG / PENYEMAK"}</span></p>
-                  <p>Tarikh : <span className="font-semibold">{formatDateOnly(selectedAppForPrint.tarikhMohon)}</span></p>
+                  <p>Tarikh : <span className="font-semibold">{selectedAppForPrint.status !== "PENDING" ? formatDateOnly(selectedAppForPrint.tarikhMohon) : "-"}</span></p>
                 </div>
 
+                {/* DILULUSKAN OLEH */}
                 <div className="space-y-1 relative">
                   <p className="font-bold underline">Diluluskan Oleh:</p>
+
                   <div className="h-16 relative flex items-end mb-2">
-                    {selectedAppForPrint.approverSignUrl && (
+                    {selectedAppForPrint.approverSignUrl && selectedAppForPrint.status === "DILULUSKAN" ? (
                       <img src={selectedAppForPrint.approverSignUrl} alt="Sign Approver" className="h-14 object-contain absolute bottom-1 left-2 z-10" />
+                    ) : (
+                      <span className="text-gray-400 italic text-[11px] mb-2">(BELUM DILULUSKAN)</span>
                     )}
                     <div className="w-full border-b border-dotted border-black"></div>
                   </div>
+
                   <p className="font-semibold">{selectedAppForPrint.approverName || "Pengarah"}</p>
                   <p>Bahagian Keurusetiaan dan Rekod (BPKR)</p>
                   <p>Jabatan Kehakiman Syariah Malaysia (JKSM)</p>
-                  <p>Tarikh : <span className="font-semibold">{formatDateOnly(selectedAppForPrint.tarikhMohon)}</span></p>
+                  <p>Tarikh : <span className="font-semibold">{selectedAppForPrint.status === "DILULUSKAN" ? formatDateOnly(selectedAppForPrint.tarikhMohon) : "-"}</span></p>
                 </div>
+
               </div>
 
             </div>
