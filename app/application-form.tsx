@@ -88,6 +88,16 @@ export default function ApplicationForm() {
       return;
     }
 
+    // Ambil maklumat sesi log masuk daripada localStorage
+    const savedUser = localStorage.getItem("myotnt_user");
+    const currentUser = savedUser ? JSON.parse(savedUser) : null;
+    const applicantEmail = currentUser?.email || "";
+
+    if (!applicantEmail) {
+      alert("Sesi anda telah tamat. Sila log masuk semula!");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -96,6 +106,11 @@ export default function ApplicationForm() {
       formData.append("bulan", bulan);
       formData.append("tahun", tahun);
       formData.append("vehicleType", vehicleType);
+      
+      // Hantar maklumat emel & ID pemohon
+      formData.append("applicantEmail", applicantEmail);
+      formData.append("userId", applicantEmail);
+
       formData.append("otItems", JSON.stringify(otItems));
       formData.append("tntItems", JSON.stringify(tntItems));
       formData.append("supporterEmail", supporterEmail);

@@ -42,11 +42,12 @@ export async function submitApplication(formData: FormData) {
     
     const rawBulan = (formData.get("bulan") as string || "");
     const rawTahun = (formData.get("tahun") as string || "");
-    
-    // Auto Format & Penukaran ke HURUF BESAR (Contoh: SEPTEMBER/2026)
     const monthApplied = formatMonthApplied(rawBulan, rawTahun);
 
     const vehicleType = (formData.get("vehicleType") as string) || "Kenderaan Sendiri";
+    const applicantEmail = (formData.get("applicantEmail") as string) || "";
+    const userId = (formData.get("userId") as string) || applicantEmail;
+
     const otItems = JSON.parse((formData.get("otItems") as string) || "[]");
     const tntItems = JSON.parse((formData.get("tntItems") as string) || "[]");
     const supporterEmail = formData.get("supporterEmail") as string;
@@ -75,6 +76,8 @@ export async function submitApplication(formData: FormData) {
       type,
       monthApplied,
       vehicleType,
+      applicantEmail,
+      userId,
       otItems,
       tntItems,
       supporterEmail,
@@ -89,10 +92,7 @@ export async function submitApplication(formData: FormData) {
     });
 
     const result = await res.json();
-
-    if (result.result === "error") {
-      throw new Error(result.message);
-    }
+    if (result.result === "error") throw new Error(result.message);
 
     return { success: true, applicationId };
   } catch (err: any) {
