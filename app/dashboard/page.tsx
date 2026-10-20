@@ -60,9 +60,9 @@ export default function DashboardPage() {
     const res = await fetchDashboardData();
 
     if (res.success) {
-      setApplications(res.applications);
-      setUsers(res.users);
-      setProfiles(res.profiles);
+      setApplications(res.applications || []);
+      setUsers(res.users || []);
+      setProfiles(res.profiles || []);
 
       const myProf = (res.profiles || []).find((p: any) => p.email.toLowerCase() === targetEmail);
       if (myProf) {
@@ -172,14 +172,21 @@ export default function DashboardPage() {
     setIsSubmittingUser(false);
     if (res.success) {
       alert("User berjaya disimpan!");
-      setFormName(""); setFormEmail(""); loadData();
-    } else alert("Gagal: " + res.error);
+      setFormName(""); 
+      setFormEmail(""); 
+      loadData();
+    } else {
+      alert("Gagal: " + res.error);
+    }
   };
 
   const handleDeleteUser = async (email: string) => {
     if (!confirm(`Padam pengguna ${email}?`)) return;
     const res = await deleteUserAction(email);
-    if (res.success) { alert("User dipadam."); loadData(); }
+    if (res.success) { 
+      alert("User dipadam."); 
+      loadData(); 
+    }
   };
 
   const formatDateOnly = (dateStr: string) => {
@@ -188,7 +195,9 @@ export default function DashboardPage() {
       const d = new Date(dateStr);
       if (isNaN(d.getTime())) return dateStr.split("T")[0] || dateStr;
       return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
-    } catch { return dateStr; }
+    } catch { 
+      return dateStr; 
+    }
   };
 
   const renderDateRange = (item: any) => {
@@ -241,7 +250,7 @@ export default function DashboardPage() {
     ? profiles.find(p => p.email.toLowerCase() === appApplicantEmail)
     : null;
 
-    // 1. HELPER CONVERT URUTAN NOMBOR KE PERKATAAN MALAY
+  // HELPER CONVERT URUTAN NOMBOR KE PERKATAAN MALAY
   const getOrdinalText = (count: number) => {
     const ordinals = [
       "PERTAMA", "KEDUA", "KETIGA", "KEEMPAT", "KELIMA", 
@@ -250,27 +259,21 @@ export default function DashboardPage() {
     return ordinals[count - 1] || `KE-${count}`;
   };
 
-  // 2. KIRA PERMOHONAN KE-BERAPA BAGI PEMOHON PADA BULAN TERSEBUT
+  // KIRA PERMOHONAN KE-BERAPA BAGI PEMOHON PADA BULAN TERSEBUT
   const getApplicationSequenceText = (currentApp: any) => {
     if (!currentApp) return "PERTAMA";
 
     const applicantMail = (currentApp.applicantEmail || "").toLowerCase().trim();
     const appMonth = (currentApp.monthApplied || "").toUpperCase().trim();
 
-    // Semak semua permohonan milik pemohon ini pada bulan/tahun tersebut
     const sameMonthApps = applications.filter((a) => {
       const aMail = (a.applicantEmail || "").toLowerCase().trim();
       const aMonth = (a.monthApplied || "").toUpperCase().trim();
       return aMail === applicantMail && aMonth === appMonth;
     });
 
-    // Susun mengikut tarikh mohon / ID
     sameMonthApps.sort((a, b) => new Date(a.tarikhMohon).getTime() - new Date(b.tarikhMohon).getTime());
-
-    // Cari kedudukan (index) permohonan semasa
     const index = sameMonthApps.findIndex((a) => a.applicationId === currentApp.applicationId);
-    
-    // Jika tidak dijumpai (fallback), sekurang-kurangnya kedudukan ke-1
     const count = index >= 0 ? index + 1 : 1;
 
     return getOrdinalText(count);

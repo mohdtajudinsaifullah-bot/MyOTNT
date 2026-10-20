@@ -2,6 +2,35 @@
 
 const googleScriptUrl = process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL;
 
+function formatMonthApplied(bulanRaw: string, tahunRaw: string): string {
+  if (!bulanRaw) return "";
+
+  // Jika input adalah format ISO String (cth: 2026-08-31T16:00:00.000Z)
+  if (bulanRaw.includes("T") || bulanRaw.includes("-")) {
+    try {
+      const d = new Date(bulanRaw);
+      if (!isNaN(d.getTime())) {
+        const monthNames = [
+          "JANUARI", "FEBRUARI", "MAC", "APRIL", "MEI", "JUN",
+          "JULAI", "OGOS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DISEMBER"
+        ];
+        return `${monthNames[d.getMonth()]}/${d.getFullYear()}`;
+      }
+    } catch (e) {
+      // jika gagal parse date, teruskan dengan string biasa
+    }
+  }
+
+  const bulanFormatted = bulanRaw.toUpperCase().trim();
+  const tahunFormatted = (tahunRaw || "").trim();
+
+  if (tahunFormatted && !bulanFormatted.includes("/")) {
+    return `${bulanFormatted}/${tahunFormatted}`;
+  }
+
+  return bulanFormatted;
+}
+
 export async function submitApplication(formData: FormData) {
   try {
     if (!googleScriptUrl) {
@@ -11,10 +40,11 @@ export async function submitApplication(formData: FormData) {
     const applicationId = `APP-${Date.now()}`;
     const type = formData.get("type") as string;
     
-    // Auto Tukar Bulan & Tahun ke Huruf Besar
-    const bulan = (formData.get("bulan") as string || "").toUpperCase().trim();
-    const tahun = (formData.get("tahun") as string || "").trim();
-    const monthApplied = `${bulan}/${tahun}`;
+    const rawBulan = (formData.get("bulan") as string || "");
+    const rawTahun = (formData.get("tahun") as string || "");
+    
+    // Auto Format & Penukaran ke HURUF BESAR (Contoh: SEPTEMBER/2026)
+    const monthApplied = formatMonthApplied(rawBulan, rawTahun);
 
     const vehicleType = (formData.get("vehicleType") as string) || "Kenderaan Sendiri";
     const otItems = JSON.parse((formData.get("otItems") as string) || "[]");
